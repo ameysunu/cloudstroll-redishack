@@ -11,6 +11,7 @@ import (
 
 func main() {
 	config.LoadEnv()
+	handlers.ConnectToRedis()
 
 	r := mux.NewRouter()
 
@@ -24,6 +25,8 @@ func main() {
 		handlers.ConnectToRedis()
 		fmt.Fprintln(w, "Connected to Redis and set a key-value pair")
 	}).Methods("GET")
+
+	r.HandleFunc("/memory", handlers.CreateMemory).Methods("POST")
 
 	// Start the HTTP server
 	http.Handle("/", r)
