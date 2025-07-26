@@ -11,7 +11,7 @@ import (
 
 func CreateMemory(w http.ResponseWriter, r *http.Request) {
 
-	if redisClient == nil {
+	if RedisClient == nil {
 		http.Error(w, "Redis not initialized", http.StatusInternalServerError)
 		return
 	}
@@ -33,7 +33,7 @@ func CreateMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := redisClient.Do(ctx, "JSON.SET", redisKey, "$", jsonBytes)
+	result := RedisClient.Do(Ctx, "JSON.SET", redisKey, "$", jsonBytes)
 	if result.Err() != nil {
 		http.Error(w, "Failed to save to Redis", http.StatusInternalServerError)
 		return

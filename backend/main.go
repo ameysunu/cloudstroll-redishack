@@ -6,6 +6,7 @@ import (
 
 	"github.com/ameysunu/cloudstroll/config"
 	"github.com/ameysunu/cloudstroll/handlers"
+	"github.com/ameysunu/cloudstroll/scripts"
 	"github.com/gorilla/mux"
 )
 
@@ -27,6 +28,10 @@ func main() {
 	}).Methods("GET")
 
 	r.HandleFunc("/memory", handlers.CreateMemory).Methods("POST")
+
+	r.HandleFunc("/create-index", func(w http.ResponseWriter, r *http.Request) {
+		scripts.CreateRediSearchIndex()
+	}).Methods("GET")
 
 	// Start the HTTP server
 	http.Handle("/", r)

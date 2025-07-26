@@ -7,12 +7,12 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var ctx = context.Background()
-var redisClient *redis.Client
+var Ctx = context.Background()
+var RedisClient *redis.Client
 
 func ConnectToRedis() {
 
-	redisClient = redis.NewClient(&redis.Options{
+	RedisClient = redis.NewClient(&redis.Options{
 		Addr:     config.GetEnv("REDIS_HOST", ""),
 		Username: config.GetEnv("REDIS_USERNAME", ""),
 		Password: config.GetEnv("REDIS_PASSWORD", ""),
