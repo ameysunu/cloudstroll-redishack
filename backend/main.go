@@ -28,6 +28,7 @@ func main() {
 	}).Methods("GET")
 
 	r.HandleFunc("/memory", handlers.CreateMemory).Methods("POST")
+	r.HandleFunc("/memories", handlers.SearchMemories).Methods("GET")
 
 	r.HandleFunc("/create-index", func(w http.ResponseWriter, r *http.Request) {
 		scripts.CreateRediSearchIndex()
