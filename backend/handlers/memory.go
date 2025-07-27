@@ -40,6 +40,17 @@ func CreateMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	geoKey := "memory:geo"
+	_, err = RedisClient.Do(Ctx,
+		"GEOADD", geoKey,
+		mem.Longitude, mem.Latitude,
+		redisKey, // same key you used for JSON.SET
+	).Result()
+	if err != nil {
+		http.Error(w, "Failed to add geo data: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, "Memory saved with ID %s\n", id)
 }
