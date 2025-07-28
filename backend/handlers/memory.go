@@ -5,49 +5,67 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ameysunu/cloudstroll/models"
 	"github.com/google/uuid"
 )
 
 func CreateMemory(w http.ResponseWriter, r *http.Request) {
-
 	if RedisClient == nil {
 		http.Error(w, "Redis not initialized", http.StatusInternalServerError)
 		return
 	}
 
 	var mem models.MemoryLog
-
-	err := json.NewDecoder(r.Body).Decode(&mem)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&mem); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
+	ts, err := time.Parse(time.RFC3339, mem.Timestamp)
+	if err != nil {
+		http.Error(w, "Invalid timestamp format. Use RFC3339 (e.g., 2025-07-27T12:00:00Z)", http.StatusBadRequest)
+		return
+	}
+	// Convert to milliseconds for Redis TimeSeries
+	tsMs := ts.UnixNano() / 1e6
+
 	id := uuid.New().String()
-	redisKey := fmt.Sprintf("memory:%s", id)
-
-	jsonBytes, err := json.Marshal(mem)
-	if err != nil {
-		http.Error(w, "Error encoding data", http.StatusInternalServerError)
+	key := fmt.Sprintf("memory:%s", id)
+	raw, _ := json.Marshal(mem)
+	if err := RedisClient.Do(Ctx, "JSON.SET", key, "$", raw).Err(); err != nil {
+		http.Error(w, "Failed to save JSON: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	result := RedisClient.Do(Ctx, "JSON.SET", redisKey, "$", jsonBytes)
-	if result.Err() != nil {
-		http.Error(w, "Failed to save to Redis", http.StatusInternalServerError)
-		return
-	}
-
-	geoKey := "memory:geo"
-	_, err = RedisClient.Do(Ctx,
-		"GEOADD", geoKey,
+	if _, err := RedisClient.Do(Ctx,
+		"GEOADD", "memory:geo",
 		mem.Longitude, mem.Latitude,
-		redisKey, // same key you used for JSON.SET
+		key,
+	).Result(); err != nil {
+		http.Error(w, "Failed GEOADD: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	seriesKey := fmt.Sprintf("mood:trend:%s", mem.Mood)
+
+	_, err = RedisClient.Do(Ctx,
+		"TS.CREATE", seriesKey,
+		"RETENTION", "0",
+		"LABELS", "mood", mem.Mood,
 	).Result()
-	if err != nil {
-		http.Error(w, "Failed to add geo data: "+err.Error(), http.StatusInternalServerError)
+	if err != nil && !strings.Contains(err.Error(), "already exists") {
+		http.Error(w, "TS.CREATE error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := RedisClient.Do(Ctx,
+		"TS.ADD", seriesKey,
+		tsMs, // Use the timestamp from the payload
+		1,
+	).Result(); err != nil {
+		http.Error(w, "TS.ADD error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
