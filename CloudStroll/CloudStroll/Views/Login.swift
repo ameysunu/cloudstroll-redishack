@@ -10,7 +10,8 @@ import AuthenticationServices
 
 struct Login: View {
     
-    @StateObject private var loginCtrl = LoginController()
+    @ObservedObject var loginCtrl: LoginController
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         VStack {
@@ -24,6 +25,38 @@ struct Login: View {
                 .foregroundStyle(.secondary)
 
             Spacer()
+            
+            TextField("Email", text: $loginCtrl.email)
+                            .keyboardType(.emailAddress)
+                            .autocapitalization(.none)
+                            .padding()
+                            .background(Color(.secondarySystemBackground))
+                            .cornerRadius(10)
+                        
+            SecureField("Password", text: $loginCtrl.password)
+                            .padding()
+                            .background(Color(.secondarySystemBackground))
+                            .cornerRadius(10)
+            Button(action: {
+                            loginCtrl.signInWithEmail()
+                        }) {
+                            Text("Sign In")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+            
+            Divider()
+            
+            Button(action: {
+                loginCtrl.createAccountWithEmail()
+            }) {
+                Text("Create an account")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(.blue)
+            .controlSize(.large)
             
             SignInWithAppleButton(
                 .signIn,
@@ -39,7 +72,7 @@ struct Login: View {
                     }
                 }
             )
-            .signInWithAppleButtonStyle(.black)
+            .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
             .frame(height: 55)
             .cornerRadius(10)
             .padding(.horizontal)
@@ -59,8 +92,4 @@ struct Login: View {
         }
         .padding()
     }
-}
-
-#Preview {
-    Login()
 }

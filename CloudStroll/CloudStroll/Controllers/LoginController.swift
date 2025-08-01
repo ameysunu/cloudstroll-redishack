@@ -8,8 +8,12 @@
 import AuthenticationServices
 import CryptoKit
 import Combine
+import FirebaseAuth
 
 class LoginController: LoginControlling {
+
+    @Published var email = ""
+    @Published var password = ""
     
     @Published var userIdentifier: String?
     @Published var userEmail: String?
@@ -17,6 +21,34 @@ class LoginController: LoginControlling {
     @Published var errorMessage: String?
     @Published var isSignedIn = false
     
+    private var authStateHandler: AuthStateDidChangeListenerHandle?
+    
+    init() {
+            self.authStateHandler = Auth.auth().addStateDidChangeListener { [weak self] (_, user) in
+                guard let self = self else { return }
+                if let firebaseUser = user {
+                    // User is signed in
+                    self.userIdentifier = firebaseUser.uid
+                    self.userEmail = firebaseUser.email
+                    self.isSignedIn = true
+                    self.errorMessage = nil
+                } else {
+                    // User is signed out
+                    self.userIdentifier = nil
+                    self.userEmail = nil
+                    self.isSignedIn = false
+                }
+            }
+        }
+    
+    deinit {
+        if let handle = authStateHandler {
+            Auth.auth().removeStateDidChangeListener(handle)
+        }
+    }
+    
+
+    // MARK: - Apple Sign In
     fileprivate var currentNonce: String?
     
     func prepareRequest(_ request: ASAuthorizationAppleIDRequest) {
@@ -130,4 +162,42 @@ class LoginController: LoginControlling {
         
         return Data(base64Encoded: base64String)
     }
+    
+    // MARK: - Firebase Auth
+    
+    func signOut() {
+        do {
+            try Auth.auth().signOut()
+        } catch let signOutError as NSError {
+            self.errorMessage = "Error signing out: \(signOutError.localizedDescription)"
+        }
+    }
+    
+    func signInWithEmail() {
+        guard !email.isEmpty, !password.isEmpty else {
+            self.errorMessage = "Please enter both email and password."
+            return
+        }
+        
+        Auth.auth().signIn(withEmail: email, password: password) { [weak self] (_, error) in
+            if let error = error {
+                self?.errorMessage = "Sign-in failed: \(error.localizedDescription)"
+            }
+        }
+    }
+    
+    func createAccountWithEmail() {
+            guard !email.isEmpty, !password.isEmpty else {
+                self.errorMessage = "Please enter both email and password to create an account."
+                return
+            }
+            
+            Auth.auth().createUser(withEmail: email, password: password) { [weak self] (_, error) in
+                if let error = error {
+                    self?.errorMessage = "Account creation failed: \(error.localizedDescription)"
+                }
+
+            }
+        }
+    
 }
