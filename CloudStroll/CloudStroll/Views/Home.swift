@@ -62,6 +62,18 @@ struct HomeView: View {
                     }
                 }
             }
+            .onAppear{
+                let apiCtrl = ApiController()
+                apiCtrl.apiHealthCheck { result in
+                    switch result {
+                    case .success(let responseString):
+                        print("Health check succeeded: \(responseString)")
+                        
+                    case .failure(let error):
+                        print("Health check failed: \(error)")
+                    }
+                }
+            }
             .sheet(isPresented: $showingAddMemorySheet) {
                 Text("Add New Memory Screen")
             }
