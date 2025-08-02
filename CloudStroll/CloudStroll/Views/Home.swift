@@ -75,7 +75,7 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $showingAddMemorySheet) {
-                Text("Add New Memory Screen")
+                MemoryAdd()
             }
         }
     }

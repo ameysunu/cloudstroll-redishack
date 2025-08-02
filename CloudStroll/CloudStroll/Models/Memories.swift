@@ -7,15 +7,22 @@
 import Foundation
 
 struct Memory: Identifiable {
-    let id = UUID()
-    let title: String
-    let date: Date
-    let notes: String
+    var id = UUID()
+    var location: String
+    var latitude: String
+    var longitude: String
+    var entry: String
+    var mood: String
+    var weather: String
+    var uid: String
+    
+    var date: Date
+    var notes: String
     
     var iconName: String {
-        if title.lowercased().contains("hike") {
+        if entry.lowercased().contains("hike") {
             return "mountain.2.fill"
-        } else if title.lowercased().contains("city") {
+        } else if entry.lowercased().contains("city") {
             return "building.2.fill"
         }
         return "figure.walk"
