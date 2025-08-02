@@ -9,73 +9,110 @@ import SwiftUI
 struct HomeView: View {
     @ObservedObject var loginCtrl: LoginController
     
-    // Dummy Data
-    @State private var memories: [Memory] = [
-        Memory(title: "Walk through Phoenix Park", date: .now, notes: "Saw some deer and got a coffee."),
-        Memory(title: "Dublin City Centre", date: .now.addingTimeInterval(-86400), notes: "Visited Trinity College and walked along the Liffey."),
-        Memory(title: "Hike at Howth", date: .now.addingTimeInterval(-172800), notes: "Beautiful cliff views.")
-    ]
+    @State private var memories: [Memory] = []
     
     @State private var showingAddMemorySheet = false
+    @State private var isLoading = true
+    
+    private let apiCtrl = ApiController()
     
     var body: some View {
         NavigationStack {
             Group {
-                if memories.isEmpty {
-                    ContentUnavailableView(
-                        "No Memories Yet",
-                        systemImage: "figure.walk.motion",
-                        description: Text("Tap the '+' button to add your first memory.")
-                    )
+                if isLoading {
+                    ProgressView("Loading Memories...")
+                } else if memories.isEmpty {
+                    emptyStateView
                 } else {
-                    List {
-                        ForEach(memories) { memory in
-                            NavigationLink(destination: Text("Details for \(memory.title)")) {
-                                MemoryRowView(memory: memory)
-                            }
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                            .listRowBackground(Color.clear)
-                        }
-                    }
-                    .listStyle(.plain)
+                    memoryListView
                 }
             }
             .navigationTitle("Your Memories")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Menu {
-                        Text(loginCtrl.userEmail ?? "No Email")
-                        Button("Settings", systemImage: "gear", action: {})
-                        Button("Sign Out", role: .destructive, action: loginCtrl.signOut)
-                    } label: {
-                        Image(systemName: "person.crop.circle")
-                            .font(.title2)
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showingAddMemorySheet.toggle()
-                    }) {
-                        Image(systemName: "plus")
-                    }
-                }
+                leadingToolbarItem
+                trailingToolbarItem
             }
-            .onAppear{
-                let apiCtrl = ApiController()
-                apiCtrl.apiHealthCheck { result in
-                    switch result {
-                    case .success(let responseString):
-                        print("Health check succeeded: \(responseString)")
-                        
-                    case .failure(let error):
-                        print("Health check failed: \(error)")
-                    }
-                }
+
+            .onAppear {
+                fetchMemories()
             }
             .sheet(isPresented: $showingAddMemorySheet) {
-                MemoryAdd()
+                fetchMemories()
+            } content: {
+                MemoryAdd(loginCtrl: loginCtrl)
+            }
+        }
+    }
+    
+    private func fetchMemories() {
+        guard let uid = loginCtrl.userIdentifier else {
+            print("Error: Cannot fetch memories, user ID is nil.")
+            isLoading = false
+            return
+        }
+        
+        isLoading = true
+        apiCtrl.fetchMemories(for: uid) { result in
+            DispatchQueue.main.async {
+                isLoading = false
+                switch result {
+                case .success(let fetchedMemories):
+                    self.memories = fetchedMemories
+                case .failure(let error):
+                    print("Error fetching memories: \(error.localizedDescription)")
+                    // Optionally, show an error alert to the user
+                }
+            }
+        }
+    }
+    
+    private var emptyStateView: some View {
+        ContentUnavailableView(
+            "No Memories Yet",
+            systemImage: "figure.walk.motion",
+            description: Text("Tap the '+' button to add your first memory.")
+        )
+    }
+    
+    private var memoryListView: some View {
+        List {
+            ForEach(memories) { memory in
+                NavigationLink(destination: Text("Details for \(memory.location)")) {
+                    MemoryRowView(memory: memory)
+                }
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+            }
+        }
+        .listStyle(.plain)
+        .refreshable {
+            // Allow pull-to-refresh
+            fetchMemories()
+        }
+    }
+    
+    // MARK: - Toolbar Items
+    
+    private var leadingToolbarItem: ToolbarItem<(), some View> {
+        ToolbarItem(placement: .navigationBarLeading) {
+            Menu {
+                Text(loginCtrl.userEmail ?? "No Email")
+                Button("Settings", systemImage: "gear", action: {})
+                Button("Sign Out", role: .destructive, action: loginCtrl.signOut)
+            } label: {
+                Image(systemName: "person.crop.circle")
+                    .font(.title2)
+            }
+        }
+    }
+    
+    private var trailingToolbarItem: ToolbarItem<(), some View> {
+        ToolbarItem(placement: .navigationBarTrailing) {
+            Button(action: {
+                showingAddMemorySheet.toggle()
+            }) {
+                Image(systemName: "plus")
             }
         }
     }

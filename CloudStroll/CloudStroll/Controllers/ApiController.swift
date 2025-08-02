@@ -10,6 +10,7 @@ import Alamofire
 
 class ApiController {
     private var apiEndpoint: String = ""
+   
     
     init() {
         let secretsCtrl = SecretsController()
@@ -20,6 +21,30 @@ class ApiController {
     func apiHealthCheck(completion: @escaping (Result<String, AFError>) -> Void){
         AF.request(apiEndpoint)
             .responseString { response in
+                completion(response.result)
+            }
+    }
+    
+    func sendMemoryToApi(memory: Memory, completion: @escaping (Result<String, AFError>) -> Void){
+        AF.request(
+            apiEndpoint + "/memory",
+            method: .post,
+            parameters: memory,
+            encoder: JSONParameterEncoder.default
+        )
+        .validate()
+        .responseString { response in
+            completion(response.result)
+        }
+    }
+    
+    func fetchMemories(for uid: String, completion: @escaping (Result<[Memory], AFError>) -> Void) {
+        let endpoint = apiEndpoint + "/memoryById"
+        let parameters: [String: String] = ["uid": uid]
+        
+        AF.request(endpoint, method: .get, parameters: parameters)
+            .validate()
+            .responseDecodable(of: [Memory].self) { response in
                 completion(response.result)
             }
     }

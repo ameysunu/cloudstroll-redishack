@@ -9,6 +9,8 @@ import SwiftUI
 
 struct MemoryAdd: View {
     
+    @ObservedObject var loginCtrl: LoginController
+    
     @State private var location: String = ""
     @State private var latitude: String = ""
     @State private var longitude: String = ""
@@ -17,16 +19,10 @@ struct MemoryAdd: View {
     @State private var weather: Weather = .sunny
     @State private var timestamp: Date = .now
     
+    @State private var errorMessage: String?
+    @State private var isShowingErrorAlert = false
     
-    enum Mood: String, CaseIterable, Identifiable {
-        case happy, neutral, sad, angry
-        var id: Self { self }
-    }
-    
-    enum Weather: String, CaseIterable, Identifiable {
-        case sunny, cloudy, rainy, windy, snowy
-        var id: Self { self }
-    }
+    private let apiCtrl = ApiController()
     
     @Environment(\.dismiss) var dismiss
     
@@ -85,17 +81,58 @@ struct MemoryAdd: View {
                   }
                   ToolbarItem(placement: .navigationBarTrailing) {
                       Button("Save") {
-                          dismiss()
+                          saveMemory()
                       }
                       .fontWeight(.bold)
                   }
               }
+              .alert("Error", isPresented: $isShowingErrorAlert) {
+                  Button("OK") {}
+              } message: {
+                  Text(errorMessage ?? "An unknown error occurred.")
+              }
           }
     }
+    
+    
+    private func saveMemory() {
+        guard let uid = loginCtrl.userIdentifier else {
+            showError(message: "Cannot save memory. User is not signed in.")
+            return
+        }
+        
+        let memoryCtrl = MemoryController(
+            location: location,
+            latitude: latitude,
+            longitude: longitude,
+            entry: entry,
+            mood: mood,
+            weather: weather,
+            timestamp: timestamp
+        )
+        
+        guard let payload = memoryCtrl.prepareMemoryData(uid: uid) else {
+            showError(message: "Invalid data. Please check that latitude and longitude are valid numbers.")
+            return
+        }
+        
+        apiCtrl.sendMemoryToApi(memory: payload) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let responseString):
+                    print("Success: \(responseString)")
+                    dismiss()
+                    
+                case .failure(let error):
+                    print("Failed: \(error.localizedDescription)")
+                    showError(message: error.localizedDescription)
+                }
+            }
+        }
+    }
+    
+    private func showError(message: String) {
+        self.errorMessage = message
+        self.isShowingErrorAlert = true
+    }
 }
-
-#Preview {
-    MemoryAdd()
-        .preferredColorScheme(.dark)
-}
-

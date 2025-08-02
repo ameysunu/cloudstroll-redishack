@@ -20,7 +20,7 @@ struct MemoryRowView: View {
                 .clipShape(Circle())
             
             VStack(alignment: .leading) {
-                Text(memory.title)
+                Text(memory.location)
                     .lineLimit(1)
                 
                 Text(memory.date, style: .date)

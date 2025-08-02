@@ -6,18 +6,17 @@
 //
 import Foundation
 
-struct Memory: Identifiable {
+struct Memory: Identifiable, Codable {
     var id = UUID()
     var location: String
-    var latitude: String
-    var longitude: String
+    var latitude: Double
+    var longitude: Double
     var entry: String
     var mood: String
     var weather: String
     var uid: String
     
     var date: Date
-    var notes: String
     
     var iconName: String {
         if entry.lowercased().contains("hike") {
