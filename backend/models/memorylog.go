@@ -9,4 +9,5 @@ type MemoryLog struct {
 	Weather   string    `json:"weather"`
 	Timestamp string    `json:"timestamp"`
 	Embedding []float64 `json:"embedding"`
+	UserID    string    `json:"uid"`
 }

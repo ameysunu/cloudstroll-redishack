@@ -31,6 +31,7 @@ func main() {
 	r.HandleFunc("/memories", handlers.SearchMemories).Methods("GET")
 	r.HandleFunc("/memories/near", handlers.SearchMemoriesNear).Methods("GET")
 	r.HandleFunc("/memories/trends", handlers.SearchMemoriesTrends).Methods("GET")
+	r.HandleFunc("/memoryById", handlers.SearchMemoriesByUid).Methods("GET")
 
 	r.HandleFunc("/create-index", func(w http.ResponseWriter, r *http.Request) {
 		scripts.CreateRediSearchIndex()

@@ -216,3 +216,48 @@ func SearchMemories(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(matches)
 }
+
+func SearchMemoriesByUid(w http.ResponseWriter, r *http.Request) {
+	uid := r.URL.Query().Get("uid")
+	if uid == "" {
+		http.Error(w, "Missing 'uid' query parameter", http.StatusBadRequest)
+		return
+	}
+
+	escapedUID := strings.ReplaceAll(uid, "-", "\\-")
+	searchQuery := fmt.Sprintf("@uid:{%s}", escapedUID)
+
+	cmd := RedisClient.Do(Ctx,
+		"FT.SEARCH", "memory-idx", searchQuery,
+		"LIMIT", "0", "1000",
+		"RETURN", "1", "$",
+	)
+	res, err := cmd.Result()
+	if err != nil {
+		http.Error(w, "Redis search error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	matches := make([]models.MemoryLog, 0)
+	if resultMap, ok := res.(map[interface{}]interface{}); ok {
+		if rawResults, ok := resultMap["results"].([]interface{}); ok {
+			for _, resultItem := range rawResults {
+				if itemMap, ok := resultItem.(map[interface{}]interface{}); ok {
+					if extraAttrs, ok := itemMap["extra_attributes"].(map[interface{}]interface{}); ok {
+						if jsonStr, ok := extraAttrs["$"].(string); ok {
+							var mem models.MemoryLog
+							if err := json.Unmarshal([]byte(jsonStr), &mem); err == nil {
+								matches = append(matches, mem)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(matches); err != nil {
+		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+	}
+}
