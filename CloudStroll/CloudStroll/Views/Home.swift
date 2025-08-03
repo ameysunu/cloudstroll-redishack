@@ -77,7 +77,7 @@ struct HomeView: View {
     private var memoryListView: some View {
         List {
             ForEach(memories) { memory in
-                NavigationLink(destination: Text("Details for \(memory.location)")) {
+                NavigationLink(destination: MemoryView(memory: memory)) {
                     MemoryRowView(memory: memory)
                 }
                 .listRowSeparator(.hidden)
