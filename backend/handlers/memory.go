@@ -26,6 +26,9 @@ func CreateMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	newID := uuid.New()
+	mem.Id = newID
+
 	payloadBytes, _ := json.MarshalIndent(mem, "", "  ")
 	log.Printf("Received JSON payload:\n%s", string(payloadBytes))
 

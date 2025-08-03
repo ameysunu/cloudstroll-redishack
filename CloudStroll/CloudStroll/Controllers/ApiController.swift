@@ -45,6 +45,7 @@ class ApiController {
         AF.request(endpoint, method: .get, parameters: parameters)
             .validate()
             .responseDecodable(of: [Memory].self) { response in
+                print(response)
                 completion(response.result)
             }
     }
