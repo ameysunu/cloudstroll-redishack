@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -13,28 +14,34 @@ import (
 
 func CreateMemory(w http.ResponseWriter, r *http.Request) {
 	if RedisClient == nil {
+		log.Println("Error: RedisClient is not initialized")
 		http.Error(w, "Redis not initialized", http.StatusInternalServerError)
 		return
 	}
 
 	var mem models.MemoryLog
 	if err := json.NewDecoder(r.Body).Decode(&mem); err != nil {
+		log.Printf("Error decoding JSON payload: %v", err)
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
+	payloadBytes, _ := json.MarshalIndent(mem, "", "  ")
+	log.Printf("Received JSON payload:\n%s", string(payloadBytes))
+
 	ts, err := time.Parse(time.RFC3339, mem.Timestamp)
 	if err != nil {
+		log.Printf("Error parsing timestamp '%s': %v", mem.Timestamp, err)
 		http.Error(w, "Invalid timestamp format. Use RFC3339 (e.g., 2025-07-27T12:00:00Z)", http.StatusBadRequest)
 		return
 	}
-	// Convert to milliseconds for Redis TimeSeries
 	tsMs := ts.UnixNano() / 1e6
 
 	id := uuid.New().String()
 	key := fmt.Sprintf("memory:%s", id)
 	raw, _ := json.Marshal(mem)
 	if err := RedisClient.Do(Ctx, "JSON.SET", key, "$", raw).Err(); err != nil {
+		log.Printf("Error saving JSON to Redis for key '%s': %v", key, err)
 		http.Error(w, "Failed to save JSON: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -44,6 +51,7 @@ func CreateMemory(w http.ResponseWriter, r *http.Request) {
 		mem.Longitude, mem.Latitude,
 		key,
 	).Result(); err != nil {
+		log.Printf("Error performing GEOADD for key '%s': %v", key, err)
 		http.Error(w, "Failed GEOADD: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -56,19 +64,22 @@ func CreateMemory(w http.ResponseWriter, r *http.Request) {
 		"LABELS", "mood", mem.Mood,
 	).Result()
 	if err != nil && !strings.Contains(err.Error(), "already exists") {
+		log.Printf("Error creating time series '%s': %v", seriesKey, err)
 		http.Error(w, "TS.CREATE error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if _, err := RedisClient.Do(Ctx,
 		"TS.ADD", seriesKey,
-		tsMs, // Use the timestamp from the payload
+		tsMs,
 		1,
 	).Result(); err != nil {
+		log.Printf("Error adding to time series '%s': %v", seriesKey, err)
 		http.Error(w, "TS.ADD error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	log.Printf("Successfully saved memory with ID %s", id)
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, "Memory saved with ID %s\n", id)
 }

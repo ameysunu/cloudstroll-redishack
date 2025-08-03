@@ -1,6 +1,9 @@
 package models
 
+import "github.com/google/uuid"
+
 type MemoryLog struct {
+	Id        uuid.UUID `json:"id"`
 	Location  string    `json:"location"`
 	Latitude  float64   `json:"latitude"`
 	Longitude float64   `json:"longitude"`

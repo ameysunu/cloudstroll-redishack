@@ -34,6 +34,10 @@ class MemoryController: MemoryProtocol {
             return nil
         }
         
+        let formatter = ISO8601DateFormatter()
+           formatter.formatOptions = [.withInternetDateTime]
+           let timestampString = formatter.string(from: timestamp)
+        
         return Memory(
             location: location,
             latitude: lat,
@@ -42,7 +46,8 @@ class MemoryController: MemoryProtocol {
             mood: mood.rawValue,
             weather: weather.rawValue,
             uid: uid,
-            date: timestamp
+            embedding: [0],
+            timestamp: timestampString
         )
         
     }

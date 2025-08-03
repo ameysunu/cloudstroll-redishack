@@ -15,8 +15,9 @@ struct Memory: Identifiable, Codable {
     var mood: String
     var weather: String
     var uid: String
+    var embedding: [Float]
     
-    var date: Date
+    var timestamp: String
     
     var iconName: String {
         if entry.lowercased().contains("hike") {
