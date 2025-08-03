@@ -53,3 +53,33 @@ class MemoryController: MemoryProtocol {
     }
     
 }
+
+extension String {
+    func toFormattedDateString() -> String? {
+        let isoFormatter = ISO8601DateFormatter()
+        guard let date = isoFormatter.date(from: self) else {
+            return nil
+        }
+        
+        let outputFormatter = DateFormatter()
+        outputFormatter.dateFormat = "'dd' MMMM yyyy, HH:mm"
+        let formattedString = outputFormatter.string(from: date)
+        
+        let calendar = Calendar.current
+        let day = calendar.component(.day, from: date)
+        let daySuffix = getDaySuffix(for: day)
+        
+        let finalString = formattedString.replacingOccurrences(of: "dd", with: "\(day)\(daySuffix)")
+        
+        return finalString
+    }
+    
+    private func getDaySuffix(for day: Int) -> String {
+        switch day {
+        case 1, 21, 31: return "st"
+        case 2, 22: return "nd"
+        case 3, 23: return "rd"
+        default: return "th"
+        }
+    }
+}

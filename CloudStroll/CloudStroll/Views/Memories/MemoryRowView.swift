@@ -23,7 +23,7 @@ struct MemoryRowView: View {
                 Text(memory.location)
                     .lineLimit(1)
                 
-                Text(memory.timestamp) //, style: .date)
+                Text(memory.timestamp.toFormattedDateString() ?? "") //, style: .date)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

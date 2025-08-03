@@ -84,6 +84,10 @@ struct HomeView: View {
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 .listRowBackground(Color.clear)
             }
+            .onDelete { offset in
+                memories.remove(atOffsets: offset)
+                //TO-DO: Implement Go Api to delete memory from Redis
+            }
         }
         .listStyle(.plain)
         .refreshable {
