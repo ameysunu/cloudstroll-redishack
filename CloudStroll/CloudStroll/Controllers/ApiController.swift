@@ -72,4 +72,34 @@ class ApiController {
         return memories
     }
     
+    func fetchTrends(
+        from: Date,
+        to: Date,
+        completion: @escaping (Result<[String: [TrendPoint]], AFError>) -> Void
+    ) {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+
+        let url = apiEndpoint + "/memories/trends"
+        let params: Parameters = [
+            "from": df.string(from: from),
+            "to":   df.string(from: to)
+        ]
+
+        AF.request(url, parameters: params)
+          .validate()
+          .responseDecodable(of: [String: [TrendPoint]].self) { response in
+              debugPrint(response)
+              
+              if let data = response.data,
+                 let raw = String(data: data, encoding: .utf8) {
+                  print("⚙️ trends JSON object:\n\(raw)")
+              }
+
+              completion(response.result)
+          }
+    }
+
+
+    
 }

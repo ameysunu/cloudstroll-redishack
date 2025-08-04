@@ -37,13 +37,12 @@ struct CloudStrollApp: App {
                             Image(systemName: "map")
                             Text("Map")
                         }
-        //
-        //            // ─────────── Trends ───────────
-        //            TrendsView()
-        //                .tabItem {
-        //                    Image(systemName: "chart.line.uptrend.xyaxis")
-        //                    Text("Trends")
-        //                }
+        
+                    TrendsView()
+                        .tabItem {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                            Text("Trends")
+                        }
                 }
 
             } else {
