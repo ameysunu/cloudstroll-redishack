@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreLocation
 
 struct MemoryAdd: View {
     
@@ -23,77 +24,113 @@ struct MemoryAdd: View {
     @State private var isShowingErrorAlert = false
     
     private let apiCtrl = ApiController()
+    @StateObject private var locationManager = LocationManager()
     
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
-          NavigationView {
-              ScrollView {
-                  VStack(alignment: .leading, spacing: 16) {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    
+                    TextField("Location", text: $location)
+                        .modifier(FormFieldStyle())
+                    
+                    HStack(spacing: 16) {
+                        TextField("Latitude", text: $latitude)
+                            .keyboardType(.decimalPad)
+                            .modifier(FormFieldStyle())
                         
-                      TextField("Location", text: $location)
-                          .modifier(FormFieldStyle())
-                      
-                      HStack(spacing: 16) {
-                          TextField("Latitude", text: $latitude)
-                              .keyboardType(.decimalPad)
-                              .modifier(FormFieldStyle())
-                         
-                          TextField("Longitude", text: $longitude)
-                              .keyboardType(.decimalPad)
-                              .modifier(FormFieldStyle())
-                      }
-                      
-                      ZStack(alignment: .topLeading) {
-                          TextEditor(text: $entry)
-                              .frame(minHeight: 150)
-                              .scrollContentBackground(.hidden)
-                              .modifier(FormFieldStyle())
-                         
-                          if entry.isEmpty {
-                              Text("Entry")
-                                  .foregroundColor(Color(.placeholderText))
-                                  .padding()
-                                  .padding(.top, 8)
-                                  .allowsHitTesting(false)
-                          }
-                      }
-                      
-                      CustomPicker(selection: $mood)
-                      CustomPicker(selection: $weather)
-                      
-                      DatePicker(
-                          "Timestamp",
-                          selection: $timestamp,
-                          displayedComponents: [.date, .hourAndMinute]
-                      )
-                      .modifier(FormFieldStyle())
-                      
-                      Spacer()
-                  }
-                  .padding()
-              }
-              .navigationTitle("New Memory")
-              .navigationBarTitleDisplayMode(.inline)
-              .toolbar {
-                  ToolbarItem(placement: .navigationBarLeading) {
-                      Button("Cancel") { dismiss() }
-                  }
-                  ToolbarItem(placement: .navigationBarTrailing) {
-                      Button("Save") {
-                          saveMemory()
-                      }
-                      .fontWeight(.bold)
-                  }
-              }
-              .alert("Error", isPresented: $isShowingErrorAlert) {
-                  Button("OK") {}
-              } message: {
-                  Text(errorMessage ?? "An unknown error occurred.")
-              }
-          }
+                        TextField("Longitude", text: $longitude)
+                            .keyboardType(.decimalPad)
+                            .modifier(FormFieldStyle())
+                    }
+                    
+                    HStack {
+                        Spacer()
+                        Button {
+                            fetchCurrentLocation()
+                        } label: {
+                            // This frame modifier makes the label, and thus the button, expand
+                            Label("Get Current Location", systemImage: "location.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        // Using .borderedProminent for a stronger visual appearance
+                        .buttonStyle(.borderedProminent)
+                        .tint(.accentColor)
+                        .padding(.top, 10)
+                        Spacer()
+                    }
+                    .padding(.top, -8)
+                    
+                    ZStack(alignment: .topLeading) {
+                        TextEditor(text: $entry)
+                            .frame(minHeight: 150)
+                            .scrollContentBackground(.hidden)
+                            .modifier(FormFieldStyle())
+                        
+                        if entry.isEmpty {
+                            Text("Entry")
+                                .foregroundColor(Color(.placeholderText))
+                                .padding()
+                                .padding(.top, 8)
+                                .allowsHitTesting(false)
+                        }
+                    }
+                    
+                    CustomPicker(selection: $mood)
+                    CustomPicker(selection: $weather)
+                    
+                    DatePicker(
+                        "Timestamp",
+                        selection: $timestamp,
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                    .modifier(FormFieldStyle())
+                    
+                    Spacer()
+                }
+                .padding()
+            }
+            .navigationTitle("New Memory")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveMemory()
+                    }
+                    .fontWeight(.bold)
+                }
+            }
+            .alert("Error", isPresented: $isShowingErrorAlert) {
+                Button("OK") {}
+            } message: {
+                Text(errorMessage ?? "An unknown error occurred.")
+            }
+            .onChange(of: locationManager.location) { newLocation in
+                if let location = newLocation {
+                    self.latitude = String(location.coordinate.latitude)
+                    self.longitude = String(location.coordinate.longitude)
+                }
+            }
+        }
     }
     
+    private func fetchCurrentLocation() {
+        switch locationManager.status {
+        case .notDetermined:
+            locationManager.requestAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            locationManager.requestLocation()
+        case .restricted, .denied:
+            showError(message: "Location permission is required. Please enable it in Settings.")
+        @unknown default:
+            fatalError("Unhandled CoreLocation authorization status.")
+        }
+    }
     
     private func saveMemory() {
         guard let uid = loginCtrl.userIdentifier else {
