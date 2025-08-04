@@ -26,19 +26,32 @@ func CreateMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Assign IDs & log payload
 	newID := uuid.New()
 	mem.Id = newID
+	pretty, _ := json.MarshalIndent(mem, "", "  ")
+	log.Printf("Received JSON payload:\n%s", string(pretty))
 
-	payloadBytes, _ := json.MarshalIndent(mem, "", "  ")
-	log.Printf("Received JSON payload:\n%s", string(payloadBytes))
-
+	// Parse timestamp
 	ts, err := time.Parse(time.RFC3339, mem.Timestamp)
 	if err != nil {
 		log.Printf("Error parsing timestamp '%s': %v", mem.Timestamp, err)
-		http.Error(w, "Invalid timestamp format. Use RFC3339 (e.g., 2025-07-27T12:00:00Z)", http.StatusBadRequest)
+		http.Error(w, "Invalid timestamp format. Use RFC3339", http.StatusBadRequest)
 		return
 	}
 	tsMs := ts.UnixNano() / 1e6
+
+	emb, err := embedText(mem.Entry)
+	if err != nil {
+		log.Printf("Embedding error: %v", err)
+		http.Error(w, "Embedding error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	mem.Embedding = make([]float64, len(emb))
+	for i, v := range emb {
+		mem.Embedding[i] = float64(v)
+	}
 
 	id := uuid.New().String()
 	key := fmt.Sprintf("memory:%s", id)
@@ -59,19 +72,17 @@ func CreateMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 4️⃣ TimeSeries per mood
 	seriesKey := fmt.Sprintf("mood:trend:%s", mem.Mood)
-
-	_, err = RedisClient.Do(Ctx,
+	if _, err := RedisClient.Do(Ctx,
 		"TS.CREATE", seriesKey,
 		"RETENTION", "0",
 		"LABELS", "mood", mem.Mood,
-	).Result()
-	if err != nil && !strings.Contains(err.Error(), "already exists") {
+	).Result(); err != nil && !strings.Contains(err.Error(), "already exists") {
 		log.Printf("Error creating time series '%s': %v", seriesKey, err)
 		http.Error(w, "TS.CREATE error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	if _, err := RedisClient.Do(Ctx,
 		"TS.ADD", seriesKey,
 		tsMs,
