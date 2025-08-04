@@ -50,4 +50,26 @@ class ApiController {
             }
     }
     
+    func fetchNearbyMemories(lat:Double, long: Double, completion: @escaping (Result<[Memory], AFError>) -> Void){
+        let endpoint = apiEndpoint + "/memories/near?lat=\(lat)&lon=\(long)"
+        AF.request(endpoint, method: .get)
+            .validate()
+            .responseDecodable(of: [Memory].self) { response in
+                print(response)
+                completion(response.result)
+            }
+
+    }
+    
+    func fetchAllMemories() async throws -> [Memory] {
+        let endpoint = apiEndpoint + "/memories"
+        
+        let memories = try await AF.request(endpoint, method: .get)
+            .validate()
+            .serializingDecodable([Memory].self)
+            .value
+            
+        return memories
+    }
+    
 }

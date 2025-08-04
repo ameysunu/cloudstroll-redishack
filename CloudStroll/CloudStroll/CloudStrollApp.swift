@@ -25,7 +25,27 @@ struct CloudStrollApp: App {
     var body: some Scene {
         WindowGroup {
             if(loginCtrl.isSignedIn){
-                HomeView(loginCtrl: loginCtrl)
+                TabView {
+                    HomeView(loginCtrl: loginCtrl)
+                        .tabItem {
+                            Image(systemName: "list.bullet")
+                            Text("Memories")
+                        }
+                    
+                    MemoryMapView()
+                        .tabItem {
+                            Image(systemName: "map")
+                            Text("Map")
+                        }
+        //
+        //            // ─────────── Trends ───────────
+        //            TrendsView()
+        //                .tabItem {
+        //                    Image(systemName: "chart.line.uptrend.xyaxis")
+        //                    Text("Trends")
+        //                }
+                }
+
             } else {
                 Login(loginCtrl: loginCtrl)
             }
