@@ -20,10 +20,13 @@ struct Memory: Identifiable, Codable {
     var timestamp: String
     
     var iconName: String {
-        if entry.lowercased().contains("hike") {
-            return "mountain.2.fill"
-        } else if entry.lowercased().contains("city") {
-            return "building.2.fill"
+        let text = entry.lowercased()
+        for mapping in iconMappings {
+            for kw in mapping.keywords {
+                if text.contains(kw) {
+                    return mapping.symbol
+                }
+            }
         }
         return "figure.walk"
     }
