@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -72,7 +74,6 @@ func CreateMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4️⃣ TimeSeries per mood
 	seriesKey := fmt.Sprintf("mood:trend:%s", mem.Mood)
 	if _, err := RedisClient.Do(Ctx,
 		"TS.CREATE", seriesKey,
@@ -285,4 +286,84 @@ func SearchMemoriesByUid(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(matches); err != nil {
 		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func SearchSemantic(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		http.Error(w, "Query `q` required", http.StatusBadRequest)
+		return
+	}
+	topk := r.URL.Query().Get("topk")
+	if topk == "" {
+		topk = "5"
+	}
+
+	emb32, err := embedText(q)
+	if err != nil {
+		http.Error(w, "Embedding error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	blob := float32SliceToBlob(emb32)
+
+	query := fmt.Sprintf("* => [KNN %s @vec $BLOB]", topk)
+	res, err := RedisClient.Do(Ctx,
+		"FT.SEARCH", "memory-idx",
+		query,
+		"DIALECT", "2",
+		"PARAMS", "2", "BLOB", blob,
+		"RETURN", "1", "$",
+		"LIMIT", "0", topk,
+	).Result()
+	if err != nil {
+		http.Error(w, "Redis search error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var matches []map[string]interface{}
+
+	if arr, ok := res.([]interface{}); ok {
+		for i := 1; i < len(arr); i += 2 {
+			rec, ok := arr[i+1].([]interface{})
+			if !ok || len(rec) == 0 {
+				continue
+			}
+			jsonStr, _ := rec[0].(string)
+			var obj map[string]interface{}
+			if err := json.Unmarshal([]byte(jsonStr), &obj); err == nil {
+				matches = append(matches, obj)
+			}
+		}
+	}
+	if mp, ok := res.(map[interface{}]interface{}); ok {
+		if rawResults, exists := mp["results"].([]interface{}); exists {
+			for _, item := range rawResults {
+				itemMap, ok := item.(map[interface{}]interface{})
+				if !ok {
+					continue
+				}
+
+				if extras, ok := itemMap["extra_attributes"].(map[interface{}]interface{}); ok {
+					if jsonStr, ok := extras["$"].(string); ok {
+						var obj map[string]interface{}
+						if err := json.Unmarshal([]byte(jsonStr), &obj); err == nil {
+							matches = append(matches, obj)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(matches)
+}
+
+func float32SliceToBlob(vec []float32) []byte {
+	buf := make([]byte, 4*len(vec))
+	for i, v := range vec {
+		bits := math.Float32bits(v)
+		binary.LittleEndian.PutUint32(buf[i*4:], bits)
+	}
+	return buf
 }
