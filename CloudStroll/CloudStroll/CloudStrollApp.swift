@@ -43,6 +43,13 @@ struct CloudStrollApp: App {
                             Image(systemName: "chart.line.uptrend.xyaxis")
                             Text("Trends")
                         }
+                    
+                    AISearchView()
+                        .tabItem {
+                            Image(systemName: "wand.and.stars.inverse")
+                            Text("AI Search")
+                        }
+                    
                 }
 
             } else {

@@ -100,6 +100,17 @@ class ApiController {
           }
     }
 
+    func semanticSearchMemories(for searchTerm: String, completion: @escaping (Result<[Memory], AFError>) -> Void) {
+        let endpoint = apiEndpoint + "/memories/search/semantic"
+        let parameters: [String: String] = ["q": searchTerm, "topk": "3"]
+        
+        AF.request(endpoint, method: .get, parameters: parameters)
+            .validate()
+            .responseDecodable(of: [Memory].self) { response in
+                print(response)
+                completion(response.result)
+            }
+    }
 
     
 }
