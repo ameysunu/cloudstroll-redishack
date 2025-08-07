@@ -11,6 +11,8 @@ struct AISearchView: View {
     @StateObject private var viewModel = AISearchViewModel()
     
     var body: some View {
+        let vm = viewModel
+        
         NavigationStack {
             ZStack {
                 LinearGradient(
@@ -32,7 +34,21 @@ struct AISearchView: View {
                         }
                         .padding(.bottom, 10)
                         
-                        mainContentView
+                        if vm.isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(1.5)
+                                .padding(.top, 50)
+                        } else if !vm.hasSearched {
+                            InitialStateView()
+                        } else if vm.memories.isEmpty {
+                            NoResultsView()
+                        } else {
+                            ForEach(vm.memories) { memory in
+                                AISearchRow(memory: memory)
+                                    .transition(.opacity.combined(with: .scale(0.8)))
+                            }
+                        }
                         
                         Spacer()
                     }
@@ -41,26 +57,9 @@ struct AISearchView: View {
             }
         }
         .searchable(text: $viewModel.searchText, prompt: "Search by location or keyword...")
-        .onSubmit(of: .search, viewModel.searchForMemories) // Triggers the search
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewModel.filteredMemories.map(\.id))
-    }
-    
-    @ViewBuilder
-    private var mainContentView: some View {
-        if viewModel.isLoading {
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                .scaleEffect(1.5)
-                .padding(.top, 50)
-        } else if !viewModel.hasSearched {
-            InitialStateView()
-        } else if viewModel.filteredMemories.isEmpty && viewModel.hasSearched {
-            NoResultsView()
-        } else {
-            ForEach(viewModel.filteredMemories) { memory in
-                AISearchRow(memory: memory)
-                    .transition(.opacity.combined(with: .scale(0.8)))
-            }
+        .submitLabel(.search)
+        .onSubmit(of: [.search, .text]) {
+            viewModel.searchForMemories()
         }
     }
 }

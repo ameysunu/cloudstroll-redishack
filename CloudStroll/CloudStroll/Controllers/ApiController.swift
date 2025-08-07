@@ -100,17 +100,23 @@ class ApiController {
           }
     }
 
-    func semanticSearchMemories(for searchTerm: String, completion: @escaping (Result<[Memory], AFError>) -> Void) {
-        let endpoint = apiEndpoint + "/memories/search/semantic"
-        let parameters: [String: String] = ["q": searchTerm, "topk": "3"]
-        
-        AF.request(endpoint, method: .get, parameters: parameters)
-            .validate()
-            .responseDecodable(of: [Memory].self) { response in
-                print(response)
-                completion(response.result)
-            }
-    }
+    
+    func semanticSearchMemories(for searchTerm: String) async throws -> [Memory] {
+           let endpoint   = apiEndpoint + "/memories/search/semantic"
+           let parameters = ["q": searchTerm, "topk": "3"]
 
+           return try await withCheckedThrowingContinuation { continuation in
+               AF.request(endpoint, method: .get, parameters: parameters)
+                 .validate()
+                 .responseDecodable(of: [Memory].self) { response in
+                     switch response.result {
+                     case .success(let memories):
+                         continuation.resume(returning: memories)
+                     case .failure(let afError):
+                         continuation.resume(throwing: afError)
+                     }
+                 }
+           }
+       }
     
 }
